@@ -3,6 +3,7 @@ module CSE230.Parse where
 import Text.Parsec hiding (State, between)
 import Text.Parsec.String
 import qualified CSE230.Types as H
+import CSE230.Types (Bop(Plus))
 
 {- As you can see, it is rather tedious to write the above tests! 
    They correspond to the code in the files `test.imp` and `fact.imp`. 
@@ -31,23 +32,32 @@ valueP = intP <|> boolP
 -- in our language are non-negative.
 
 intP :: Parser H.Value
-intP = error "fill this in"
+intP = do
+         n <- many1 digit
+         return (H.IntVal (read n))
 
 -- Next, define a parser that will accept a particular string `s` as a given value `x`
 
 constP :: String -> a -> Parser a
-constP s x = error "fill this in"
+constP s x = return x
 
 -- Use the above to define a parser for boolean values 
 -- where `"true"` and `"false"` should be parsed appropriately.
 
 boolP :: Parser H.Value
-boolP = error "fill this in"
+boolP = constP "true" (H.BoolVal True) <|> constP "false" (H.BoolVal True)
 
 -- Continue to use the above to parse the binary operators
 
 opP :: Parser H.Bop
-opP = error "fill this in"
+opP =     constP "+"  H.Plus
+      <|> constP "-"  H.Minus
+      <|> constP "*"  H.Times
+      <|> constP "/"  H.Divide
+      <|> constP ">"  H.Gt
+      <|> constP ">=" H.Ge
+      <|> constP "<"  H.Lt
+      <|> constP "<=" H.Le
 
 -------------------------------------------------------------------------------
 -- | Parsing Expressions 
