@@ -4,7 +4,6 @@ import qualified CSE230.Types as H
 import qualified CSE230.Parse as P
 import Data.Map
 import Control.Monad.State hiding (when)
-import CSE230.Types (Value(IntVal))
 
 {- Build an evaluator for the WHILE Language using 
    the standard library's `State` [monad](http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Lazy.html#g:2)
@@ -60,7 +59,7 @@ store0 = fromList [("X", H.IntVal 10),("Y", H.IntVal 20)]
 
 
 eval :: H.Store -> H.Expression -> H.Value
-eval s (H.Var x)      = findWithDefault (IntVal 0) x s
+eval s (H.Var x)      = findWithDefault (H.IntVal 0) x s
 eval s (H.Val v)      = v
 eval s (H.Op o e1 e2) = semantics o (eval s e1) (eval s e2)
 
