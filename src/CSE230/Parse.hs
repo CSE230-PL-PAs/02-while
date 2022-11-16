@@ -39,7 +39,11 @@ intP = do
 
 constP :: String -> a -> Parser a
 constP s x = do
+<<<<<<< HEAD
                _ <- string s
+=======
+               string s
+>>>>>>> b3fde1c (problem 2 solved)
                return x
 
 -- Use the above to define a parser for boolean values 
