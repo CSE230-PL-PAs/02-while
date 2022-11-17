@@ -73,23 +73,23 @@ varP = many1 upper
 -- operators are right associative, and they all have the same precedence.
 
 exprP :: Parser H.Expression
-exprP   = choice [try exprOp, exprVal, exprVar]
+exprP   = try exprOpP <|> exprValueP <|> exprVarP
 
-exprVal :: Parser H.Expression
-exprVal = do
-            H.Val <$> valueP
+exprValueP :: Parser H.Expression
+exprValueP = do
+                H.Val <$> valueP
 
-exprVar :: Parser H.Expression
-exprVar = do
-            H.Var <$> varP
+exprVarP :: Parser H.Expression
+exprVarP = do
+              H.Var <$> varP
 
-exprOp :: Parser H.Expression
-exprOp = do
-            x <- exprVar <|> exprVal <|> parenthesesP exprOp
+exprOpP :: Parser H.Expression
+exprOpP = do
+            x <- exprVarP <|> exprValueP <|> parenthesesP exprOpP
             spaceP
             o <- opP
             spaceP
-            y <- exprVar <|> exprVal <|> parenthesesP exprOp
+            y <- exprVarP <|> exprValueP <|> parenthesesP exprOpP
             return (H.Op o x y)
 
 spaceP :: Parser ()
@@ -98,9 +98,9 @@ spaceP = skipMany space
 parenthesesP :: Parser p -> Parser p
 parenthesesP p = do
                     string "("
-                    r <- p
+                    p' <- p
                     string ")"
-                    return r
+                    return p'
 
 -------------------------------------------------------------------------------
 -- | Parsing Statements 
@@ -109,7 +109,7 @@ parenthesesP p = do
 -- Next, use the expression parsers to build a statement parser
 
 statementP :: Parser H.Statement
-statementP = choice [try sequenceP, assignP, ifP, whileP, skipP]
+statementP = try sequenceP <|> assignP <|> ifP <|> whileP <|> skipP
 
 assignP :: Parser H.Statement
 assignP = do
