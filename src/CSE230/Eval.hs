@@ -12,14 +12,14 @@ import Control.Monad.State hiding (when)
    Intuitively, `State s a` is equivalent to the world-transformer `s -> (a, s)`. 
    
    See the above documentation for more details. You can ignore the bits about `StateT` for now.
- -} 
+ -}
 
 
 -------------------------------------------------------------------------------
 -- | Expression Evaluator 
 -------------------------------------------------------------------------------
 evalE :: H.Expression -> State H.Store H.Value
-evalE e = do 
+evalE e = do
   s <- get
   return (eval s e)
 
@@ -59,9 +59,9 @@ store0 = fromList [("X", H.IntVal 10),("Y", H.IntVal 20)]
 
 
 eval :: H.Store -> H.Expression -> H.Value
-eval s (H.Var x)      = error "fill this in"
-eval s (H.Val v)      = error "fill this in"
-eval s (H.Op o e1 e2) = error "fill this in"
+eval s (H.Var x)      = findWithDefault (H.IntVal 0) x s
+eval s (H.Val v)      = v
+eval s (H.Op o e1 e2) = semantics o (eval s e1) (eval s e2)
 
 semantics :: H.Bop -> H.Value -> H.Value -> H.Value
 semantics H.Plus   = intOp  (+)
@@ -100,11 +100,26 @@ boolOp _  _            _            = H.BoolVal False
 -}
 
 evalS :: H.Statement -> State H.Store ()
-evalS H.Skip             = error "fill this in"
-evalS (H.Sequence s1 s2) = error "fill this in"
-evalS (H.Assign x e )    = error "fill this in"
-evalS (H.If e s1 s2)     = error "fill this in"
-evalS w@(H.While e s)    = error "fill this in"
+evalS H.Skip             = return ()
+evalS (H.Sequence s1 s2) = evalS s1 >> evalS s2
+evalS (H.Assign x e )    = do
+                              v <- evalE e
+                              s <- get
+                              put (insert x v s)
+evalS (H.If e s1 s2)     = do
+                              v <- evalE e
+                              case v of
+                                (H.BoolVal True)  -> evalS s1
+                                (H.BoolVal False) -> evalS s2
+                                _nonBoolean       -> evalS H.Skip
+evalS w@(H.While e s)    = do
+                              v <- evalE e
+                              case v of
+                                (H.BoolVal True)  -> do
+                                                        evalS s
+                                                        evalS w
+                                _endWhile         -> return ()
+                                                        
 
 -------------------------------------------------------------------------------
 -- | Executor
@@ -136,7 +151,7 @@ evalS w@(H.While e s)    = error "fill this in"
 
 
 execS :: H.Statement -> H.Store -> H.Store
-execS s = error "fill this in"
+execS s = execState (evalS s)
 
 -------------------------------------------------------------------------------
 -- | Running a Program 
@@ -153,22 +168,22 @@ execS s = error "fill this in"
 -- fromList [("X",IntVal 0),("Y",IntVal 10)]
 
 run :: H.Statement -> IO ()
-run stmt = do 
-    putStrLn "Output Store:" 
+run stmt = do
+    putStrLn "Output Store:"
     putStrLn (show (execS stmt empty))
 
 -------------------------------------------------------------------------------
 -- | Running a File
 -------------------------------------------------------------------------------
 runFile :: FilePath -> IO ()
-runFile s = do 
+runFile s = do
   p <- P.parseFile s
   case p of
     Left err   -> print err
     Right stmt -> run stmt
 
 printStore :: H.Store -> IO ()
-printStore e = do 
+printStore e = do
   putStrLn "Environment:"
   putStrLn (show e)
 

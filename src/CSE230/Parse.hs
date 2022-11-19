@@ -11,8 +11,8 @@ import qualified CSE230.Types as H
    for the WHILE language from the previous problem.
 -}
 
-parseFromString :: Parser a -> String -> Either ParseError a 
-parseFromString p s = runParser p () "DUMMY" s 
+parseFromString :: Parser a -> String -> Either ParseError a
+parseFromString p s = runParser p () "DUMMY" s
 
 -- >>> parseFromString varP "X45"
 -- Right "X"
@@ -31,23 +31,34 @@ valueP = intP <|> boolP
 -- in our language are non-negative.
 
 intP :: Parser H.Value
-intP = error "fill this in"
+intP = do
+         n <- many1 digit
+         return (H.IntVal (read n))
 
 -- Next, define a parser that will accept a particular string `s` as a given value `x`
 
 constP :: String -> a -> Parser a
-constP s x = error "fill this in"
+constP s x = do
+               string s
+               return x
 
 -- Use the above to define a parser for boolean values 
 -- where `"true"` and `"false"` should be parsed appropriately.
 
 boolP :: Parser H.Value
-boolP = error "fill this in"
+boolP = constP "true" (H.BoolVal True) <|> constP "false" (H.BoolVal True)
 
 -- Continue to use the above to parse the binary operators
 
 opP :: Parser H.Bop
-opP = error "fill this in"
+opP =     constP "+"  H.Plus
+      <|> constP "-"  H.Minus
+      <|> constP "*"  H.Times
+      <|> constP "/"  H.Divide
+      <|> constP ">"  H.Gt
+      <|> constP ">=" H.Ge
+      <|> constP "<"  H.Lt
+      <|> constP "<=" H.Le
 
 -------------------------------------------------------------------------------
 -- | Parsing Expressions 
@@ -62,7 +73,34 @@ varP = many1 upper
 -- operators are right associative, and they all have the same precedence.
 
 exprP :: Parser H.Expression
-exprP   = error "fill this in"
+exprP   = try exprOpP <|> exprValueP <|> exprVarP
+
+exprValueP :: Parser H.Expression
+exprValueP = do
+                H.Val <$> valueP
+
+exprVarP :: Parser H.Expression
+exprVarP = do
+              H.Var <$> varP
+
+exprOpP :: Parser H.Expression
+exprOpP = do
+            x <- exprVarP <|> exprValueP <|> parenthesesP exprOpP
+            spaceP
+            o <- opP
+            spaceP
+            y <- exprVarP <|> exprValueP <|> parenthesesP exprOpP
+            return (H.Op o x y)
+
+spaceP :: Parser ()
+spaceP = skipMany space
+
+parenthesesP :: Parser p -> Parser p
+parenthesesP p = do
+                    string "("
+                    p' <- p
+                    string ")"
+                    return p'
 
 -------------------------------------------------------------------------------
 -- | Parsing Statements 
@@ -71,7 +109,66 @@ exprP   = error "fill this in"
 -- Next, use the expression parsers to build a statement parser
 
 statementP :: Parser H.Statement
-statementP = error "fill this in"
+statementP = try sequenceP <|> assignP <|> ifP <|> whileP <|> skipP
+
+assignP :: Parser H.Statement
+assignP = do
+            spaceP
+            x <- varP
+            spaceP
+            string ":="
+            spaceP
+            H.Assign x <$> exprP
+
+ifP :: Parser H.Statement
+ifP = do
+            spaceP
+            string "if"
+            spaceP
+            e <- exprP
+            spaceP
+            string "then"
+            spaceP
+            s1 <- statementP
+            spaceP
+            string "else"
+            spaceP
+            s2 <- statementP
+            spaceP
+            string "endif"
+            spaceP
+            return (H.If e s1 s2)
+
+whileP :: Parser H.Statement
+whileP = do
+            spaceP
+            string "while"
+            spaceP
+            e <- exprP
+            spaceP
+            string "do"
+            spaceP
+            s <- statementP
+            spaceP
+            string "endwhile"
+            spaceP
+            return (H.While e s)
+
+sequenceP :: Parser H.Statement
+sequenceP = do
+              spaceP
+              s1 <- assignP <|> ifP <|> whileP <|> skipP
+              string ";"
+              spaceP
+              H.Sequence s1 <$> statementP
+
+
+skipP :: Parser H.Statement
+skipP = do
+            spaceP
+            string "skip"
+            return H.Skip
+
 
 -- When you are done, we can put the parser and evaluator together 
 -- in the end-to-end interpreter function `runFile` in `Main.hs`
